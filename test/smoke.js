@@ -191,6 +191,27 @@ async function until(fn, label, ms = 5000) {
   if (!q[0].state.isPublic || q[0].state.timerKind !== 'auto') fail('自動開始タイマーが動いていない');
   ok(`ランダムマッチ: 3人が同室(code=${q[0].state.code})、自動開始タイマー作動`);
 
+  // ふりがな(名前の上に小さく表示するための情報)
+  {
+    const [r1, r2] = ['R1', 'R2'].map(client);
+    await wait(300);
+    r1.sock.emit('create', { pid: r1.pid, name: '地獄', ruby: 'ヘル' });
+    await until(() => r1.state, 'ふりがな付きで作成');
+    const rn = r1.state.players[0].name;
+    if (rn !== '地獄\u001fヘル') fail('ふりがな付きの名前が不正: ' + JSON.stringify(rn));
+    // 制御文字は取り除かれ、ふりがなは24文字まで
+    r2.sock.emit('join', { pid: r2.pid, name: 'A\u001fB', ruby: 'x'.repeat(40), code: r1.state.code });
+    await until(() => r1.state.players.length === 2, '2人目入室');
+    const [nm2, rb2] = r1.state.players[1].name.split('\u001f');
+    if (nm2 !== 'AB' || rb2.length !== 24) fail('名前・ふりがなの整形が不正: ' + JSON.stringify(r1.state.players[1].name));
+    // ふりがななしの人はそのままの名前
+    r1.sock.emit('chat', { text: 'やあ' });
+    await until(() => r2.chats.length === 1, 'チャット受信');
+    if (r2.chats[0].name !== '地獄\u001fヘル') fail('チャットの名前にふりがながない');
+    ok('ふりがなOK: 名前+ふりがなが送られる(制御文字の除去・24文字制限・チャットにも反映)');
+    [r1, r2].forEach((x) => x.sock.close());
+  }
+
   // 投票キック
   {
     const [k1, k2, k3, k4] = ['K1', 'K2', 'K3', 'K4'].map(client);
@@ -237,6 +258,42 @@ async function until(fn, label, ms = 5000) {
     if (k1.state.players.length !== 3 || k4.kicked) fail('否決なのに対象が退出した');
     ok('キック否決: 対象は残る');
     [k1, k2, k3, k4].forEach((x) => x.sock.close());
+  }
+
+  // ---- テスト用CPU: 1人 + CPU2体で1ラウンド通す ----
+  {
+    const s1 = client('Solo');
+    await wait(200);
+    s1.sock.emit('create', { pid: s1.pid, name: 'Solo' });
+    await until(() => s1.state && s1.state.phase === 'lobby', 'CPU部屋作成');
+    s1.sock.emit('bot:add');
+    s1.sock.emit('bot:add');
+    await until(() => s1.state.players.length === 3, 'CPU2体追加');
+    if (!s1.state.players.filter((p) => p.bot).length === 2) fail('bot フラグ');
+    s1.sock.emit('settings', { rounds: 1, answerSec: 30, voteSec: 20 });
+    s1.sock.emit('start');
+    await until(() => s1.state.phase === 'answer', 'CPU部屋で開始');
+    s1.sock.emit('answer', { text: 'ソロ回答' });
+    await until(() => s1.state.phase === 'present', 'CPUが回答して発表へ', 15000);
+    while (s1.state.phase === 'present') { s1.sock.emit('present:next'); await wait(150); }
+    await until(() => s1.state.phase === 'vote', '投票へ');
+    const idx = s1.state.options.find((o) => !o.mine).idx;
+    s1.sock.emit('vote', { idx });
+    await until(() => s1.state.phase === 'result', 'CPUが投票して結果へ', 15000);
+    ok('CPU2体 + 1人で1ラウンドが最後まで進む');
+    s1.sock.close();
+
+    // ランダムマッチ部屋ではCPU追加不可
+    const s2 = client('Pub');
+    await wait(200);
+    s2.sock.emit('quick', { pid: s2.pid, name: 'Pub' });
+    await until(() => s2.state && s2.state.isPublic, '公開部屋');
+    // 他のテストの待機中の人と同室になることがあるので、ホストかどうかに関わらず確認
+    s2.sock.emit('bot:add');
+    await wait(300);
+    if (s2.state.players.some((p) => p.bot)) fail('公開部屋にCPUが追加された');
+    ok('ランダムマッチ部屋ではCPUを追加できない');
+    s2.sock.close();
   }
 
   [a, b, c, ...q].forEach((x) => x.sock.close());

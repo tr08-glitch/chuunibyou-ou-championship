@@ -40,7 +40,12 @@ const shuffle = (arr) => {
   }
   return a;
 };
-const sanitizeName = (n) => String(n || '').replace(/\s+/g, ' ').trim().slice(0, 12) || '名無し';
+const RUBY_SEP = '\u001f'; // 名前とふりがなの区切り(キーボードからは入力できない制御文字)
+const stripCtl = (s) => String(s || '').replace(/[\u0000-\u001f\u007f]/g, '');
+const sanitizeName = (n) => stripCtl(n).replace(/\s+/g, ' ').trim().slice(0, 12) || '名無し';
+const sanitizeRuby = (r) => stripCtl(r).replace(/\s+/g, ' ').trim().slice(0, 24);
+// クライアントへ送る表示用の名前。ふりがながあれば「名前<区切り>ふりがな」の形にする
+const dispName = (p) => (p ? (p.ruby ? p.name + RUBY_SEP + p.ruby : p.name) : '?');
 const sanitizeText = (t) => String(t || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 30);
 
 const sanitizeChat = (t) => String(t || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 100);
@@ -100,6 +105,7 @@ function newRoom(isPublic) {
 
 const findPlayer = (room, pid) => room.players.find((p) => p.id === pid);
 const connectedPlayers = (room) => room.players.filter((p) => p.connected);
+const humanPlayers = (room) => room.players.filter((p) => p.connected && !p.bot);
 // pid は本人だけの再接続用の秘密。他のプレイヤーに見せるのは pub(公開ID)だけにする
 const pubOf = (room, pid) => {
   const p = findPlayer(room, pid);
@@ -142,7 +148,7 @@ function dropVoice(room, p) {
 function reassignHost(room) {
   const cur = findPlayer(room, room.hostId);
   if (cur && cur.connected) return;
-  const next = connectedPlayers(room)[0];
+  const next = humanPlayers(room)[0];
   if (next) room.hostId = next.id;
 }
 
@@ -165,8 +171,9 @@ function stateFor(room, p) {
     timerKind: room.timerKind,
     players: room.players.map((q) => ({
       id: q.pub,
-      name: q.name,
+      name: dispName(q),
       voice: room.voice.has(q.id),
+      bot: !!q.bot,
       connected: q.connected,
       left: !!q.left,
       total: q.total,
@@ -185,7 +192,7 @@ function stateFor(room, p) {
     // 投稿者が分からないよう、並び順の番号だけを渡す
     st.options = room.order.map((id, i) => ({
       idx: i,
-      name: (findPlayer(room, id) || {}).name || '?',
+      name: dispName(findPlayer(room, id)),
       kind: room.answers[id].kind,
       value: room.answers[id].value,
       mine: id === p.id,
@@ -199,7 +206,7 @@ function stateFor(room, p) {
       total: room.order.length,
       last: room.presentIdx >= room.order.length - 1,
       items: room.order.slice(0, room.presentIdx + 1).map((id) => ({
-        name: (findPlayer(room, id) || {}).name || '?',
+        name: dispName(findPlayer(room, id)),
         kind: room.answers[id].kind,
         value: room.answers[id].value,
         mine: id === p.id,
@@ -213,7 +220,7 @@ function stateFor(room, p) {
   if (room.phase === 'final') {
     const sorted = room.players.slice().sort((a, b) => b.total - a.total);
     const top = sorted.length ? sorted[0].total : 0;
-    st.ranking = sorted.map((q) => ({ name: q.name, total: q.total, winner: q.total === top, left: !!q.left }));
+    st.ranking = sorted.map((q) => ({ name: dispName(q), total: q.total, winner: q.total === top, left: !!q.left }));
   }
   st.kickCooldownMs = Math.max(0, (kickCooldown.get(p.id) || 0) + KICK_COOLDOWN_MS - now());
   if (room.kick) {
@@ -222,8 +229,8 @@ function stateFor(room, p) {
     const by = findPlayer(room, k.by);
     st.kick = {
       targetId: target ? target.pub : null,
-      targetName: target ? target.name : '?',
-      byName: by ? by.name : '?',
+      targetName: dispName(target),
+      byName: dispName(by),
       needed: k.needed,
       total: k.voters.length,
       yes: kickYesCount(k),
@@ -239,7 +246,7 @@ function stateFor(room, p) {
 
 function broadcast(room) {
   for (const p of room.players) {
-    if (!p.connected) continue;
+    if (!p.connected || p.bot) continue;
     io.to(p.socketId).emit('state', stateFor(room, p));
   }
 }
@@ -287,6 +294,7 @@ function startRound(room) {
   room.phase = 'answer';
   setTimer(room, room.settings.answerSec * 1000, 'answer', () => endAnswer(room));
   broadcast(room);
+  botsAnswer(room);
 }
 
 function checkAnswerDone(room) {
@@ -327,6 +335,7 @@ function startVote(room) {
   room.phase = 'vote';
   setTimer(room, room.settings.voteSec * 1000, 'vote', () => endVote(room));
   broadcast(room);
+  botsVote(room);
   checkVoteDone(room);
 }
 
@@ -341,9 +350,9 @@ function endVote(room) {
   clearTimer(room);
   const entries = room.order.map((id) => {
     const author = findPlayer(room, id);
-    const voters = room.players.filter((p) => room.votes[p.id] === id).map((p) => p.name);
+    const voters = room.players.filter((p) => room.votes[p.id] === id).map((p) => dispName(p));
     return {
-      name: author ? author.name : '?',
+      name: dispName(author),
       kind: room.answers[id].kind,
       value: room.answers[id].value,
       votes: voters.length,
@@ -437,8 +446,63 @@ function finishKick(room, passed) {
   io.to(room.code).emit('toast', `${name}さんがキックされました`);
 }
 
+// ---------- テスト用CPU ----------
+// プライベート部屋のロビーでホストが追加できる。回答・投票は自動。通話やキックには参加しない。
+const BOT_NAMES = [['CPUアルファ', 'しーぴーゆー'], ['CPUブラボー', 'しーぴーゆー'], ['CPUチャーリー', 'しーぴーゆー'], ['CPUデルタ', 'しーぴーゆー'], ['CPUエコー', 'しーぴーゆー'], ['CPUフォックス', 'しーぴーゆー']];
+const BOT_ANSWERS = ['ヘルファイア', 'ダークネス', 'ジェノサイド', 'エターナル', 'カオスゲート', 'ブラッディ', 'アビス', 'ファントム', 'クリムゾン', 'レクイエム', 'ラグナロク', 'ヴァニタス', 'ディストピア', 'ネメシス'];
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+function addBot(room) {
+  const used = new Set(room.players.map((p) => p.name));
+  const pick = BOT_NAMES.find(([n]) => !used.has(n));
+  if (!pick) return null;
+  const p = {
+    id: 'bot-' + crypto.randomBytes(6).toString('hex'),
+    pub: crypto.randomBytes(6).toString('hex'),
+    name: pick[0],
+    ruby: pick[1],
+    bot: true,
+    connected: true,
+    socketId: null,
+    total: 0,
+    left: false,
+    dropTimer: null,
+    chatTimes: [],
+  };
+  room.players.push(p);
+  return p;
+}
+
+function botsAnswer(room) {
+  const round = room.round;
+  const limit = room.settings.answerSec * 1000 * 0.6;
+  for (const b of room.players.filter((p) => p.bot)) {
+    setTimeout(() => {
+      if (rooms.get(room.code) !== room || room.phase !== 'answer' || room.round !== round || room.answers[b.id]) return;
+      room.answers[b.id] = { kind: 'text', value: BOT_ANSWERS[Math.floor(Math.random() * BOT_ANSWERS.length)] };
+      broadcast(room);
+      checkAnswerDone(room);
+    }, Math.min(rnd(2000, 8000), limit));
+  }
+}
+
+function botsVote(room) {
+  const round = room.round;
+  const limit = room.settings.voteSec * 1000 * 0.6;
+  for (const b of room.players.filter((p) => p.bot)) {
+    setTimeout(() => {
+      if (rooms.get(room.code) !== room || room.phase !== 'vote' || room.round !== round || room.votes[b.id] !== undefined) return;
+      const cand = room.order.filter((id) => id !== b.id);
+      if (!cand.length) return;
+      room.votes[b.id] = cand[Math.floor(Math.random() * cand.length)];
+      broadcast(room);
+      checkVoteDone(room);
+    }, Math.min(rnd(1500, 6000), limit));
+  }
+}
+
 // ---------- membership ----------
-function addPlayer(room, pid, name, socket) {
+function addPlayer(room, pid, name, socket, ruby = '') {
   let finalName = name;
   let k = 2;
   while (room.players.some((p) => p.name === finalName)) finalName = `${name}${k++}`;
@@ -446,6 +510,7 @@ function addPlayer(room, pid, name, socket) {
     id: pid,
     pub: crypto.randomBytes(6).toString('hex'),
     name: finalName,
+    ruby,
     connected: true,
     socketId: socket.id,
     total: 0,
@@ -469,7 +534,7 @@ function removePlayer(room, pid) {
   dropVoice(room, p);
   room.players = room.players.filter((q) => q.id !== pid);
   if (playerRoom.get(pid) === room.code) playerRoom.delete(pid);
-  if (room.players.length === 0) {
+  if (room.players.every((q) => q.bot)) {
     destroyRoom(room);
     return;
   }
@@ -502,9 +567,9 @@ function leaveRoom(room, pid) {
 function afterDisconnect(room) {
   reassignHost(room);
   const conn = connectedPlayers(room);
-  if (conn.length === 0) {
+  if (humanPlayers(room).length === 0) {
     setTimeout(() => {
-      if (rooms.get(room.code) === room && connectedPlayers(room).length === 0) destroyRoom(room);
+      if (rooms.get(room.code) === room && humanPlayers(room).length === 0) destroyRoom(room);
     }, ROOM_IDLE_MS);
     return;
   }
@@ -579,15 +644,15 @@ io.on('connection', (socket) => {
     if (room.phase === 'lobby') updateAutoStart(room);
   });
 
-  socket.on('create', ({ pid, name } = {}) => {
+  socket.on('create', ({ pid, name, ruby } = {}) => {
     if (!validPid(pid)) return;
     leaveOld(pid);
     const room = newRoom(false);
-    addPlayer(room, pid, sanitizeName(name), socket);
+    addPlayer(room, pid, sanitizeName(name), socket, sanitizeRuby(ruby));
     broadcast(room);
   });
 
-  socket.on('join', ({ pid, name, code } = {}) => {
+  socket.on('join', ({ pid, name, ruby, code } = {}) => {
     if (!validPid(pid)) return;
     code = String(code || '').trim().toUpperCase();
     const room = rooms.get(code);
@@ -601,19 +666,19 @@ io.on('connection', (socket) => {
     if (room.phase !== 'lobby') return toast('ゲームが進行中です');
     if (room.players.length >= MAX_PLAYERS) return toast('満員です(最大8人)');
     leaveOld(pid);
-    addPlayer(room, pid, sanitizeName(name), socket);
+    addPlayer(room, pid, sanitizeName(name), socket, sanitizeRuby(ruby));
     updateAutoStart(room);
     broadcast(room);
   });
 
-  socket.on('quick', ({ pid, name } = {}) => {
+  socket.on('quick', ({ pid, name, ruby } = {}) => {
     if (!validPid(pid)) return;
     leaveOld(pid);
     const candidates = [...rooms.values()]
       .filter((r) => r.isPublic && r.phase === 'lobby' && r.players.length < MAX_PLAYERS && !r.banned.has(pid))
       .sort((a, b) => connectedPlayers(b).length - connectedPlayers(a).length);
     const room = candidates[0] || newRoom(true);
-    addPlayer(room, pid, sanitizeName(name), socket);
+    addPlayer(room, pid, sanitizeName(name), socket, sanitizeRuby(ruby));
     updateAutoStart(room);
     broadcast(room);
   });
@@ -626,6 +691,23 @@ io.on('connection', (socket) => {
       answerSec: clamp(s.answerSec, 15, 180, c.room.settings.answerSec),
       voteSec: clamp(s.voteSec, 10, 90, c.room.settings.voteSec),
     };
+    broadcast(c.room);
+  });
+
+  socket.on('bot:add', () => {
+    const c = ctx();
+    if (!c || c.room.isPublic || c.room.phase !== 'lobby' || c.room.hostId !== c.pid) return;
+    if (c.room.players.length >= MAX_PLAYERS) return toast('満員です');
+    if (!addBot(c.room)) return toast('これ以上CPUは追加できません');
+    broadcast(c.room);
+  });
+
+  socket.on('bot:remove', () => {
+    const c = ctx();
+    if (!c || c.room.phase !== 'lobby' || c.room.hostId !== c.pid) return;
+    const i = c.room.players.map((p) => !!p.bot).lastIndexOf(true);
+    if (i < 0) return;
+    c.room.players.splice(i, 1);
     broadcast(c.room);
   });
 
@@ -696,10 +778,10 @@ io.on('connection', (socket) => {
       const s = Math.ceil(wait / 1000);
       return toast(`キック投票はあと${Math.floor(s / 60)}分${s % 60}秒で使えます`);
     }
-    const conn = connectedPlayers(room);
+    const conn = humanPlayers(room);
     if (conn.length < 3) return toast('キック投票は3人以上いるときに使えます');
     const t = typeof target === 'string' ? room.players.find((q) => q.pub === target) : null;
-    if (!t || !t.connected || t.left) return toast('対象が見つかりません');
+    if (!t || !t.connected || t.left || t.bot) return toast('対象が見つかりません');
     if (t.id === c.pid) return toast('自分自身はキックできません');
     const voters = conn.filter((q) => q.id !== t.id).map((q) => q.id);
     const needed = Math.floor((voters.length * 2 + 2) / 3); // 投票できる人数の2/3以上(切り上げ)
@@ -741,7 +823,7 @@ io.on('connection', (socket) => {
     c.p.chatTimes = c.p.chatTimes.filter((x) => t0 - x < 5000);
     if (c.p.chatTimes.length >= 5) return toast('投稿が早すぎます');
     c.p.chatTimes.push(t0);
-    const msg = { id: ++c.room.chatSeq, from: c.p.pub, name: c.p.name, text: t };
+    const msg = { id: ++c.room.chatSeq, from: c.p.pub, name: dispName(c.p), text: t };
     c.room.chat.push(msg);
     if (c.room.chat.length > CHAT_KEEP) c.room.chat.shift();
     io.to(c.room.code).emit('chat', msg);

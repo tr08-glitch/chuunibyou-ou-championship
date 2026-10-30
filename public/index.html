@@ -164,6 +164,9 @@
   #kickModal { z-index: 40; }
   #kickPick { z-index: 45; }
   .kicknote { font-size: 14px; color: var(--sub); }
+  ruby { ruby-position: over; }
+  rt { font-size: .5em; color: var(--sub); font-weight: 400; letter-spacing: 0; }
+  .preview { min-height: 46px; font-size: 22px; margin: 12px 0 0; text-align: center; }
   #toast {
     position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
     background: #2a2540; color: var(--text); padding: 10px 16px; border-radius: 999px;
@@ -225,6 +228,16 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// 名前とふりがなは「名前<U+001F>ふりがな」の形で届く。ふりがながあれば名前の上に小さく表示する
+const RUBY_SEP = '\u001f';
+function nm(s) {
+  s = String(s);
+  const i = s.indexOf(RUBY_SEP);
+  if (i < 0) return esc(s);
+  const n = s.slice(0, i), r = s.slice(i + 1);
+  return r ? `<ruby>${esc(n)}<rt>${esc(r)}</rt></ruby>` : esc(n);
+}
+let myRuby = '';
 let pid = null;
 try { pid = localStorage.getItem('cc_pid'); } catch (e) {}
 if (!pid) {
@@ -280,7 +293,9 @@ function getName() {
   const el = $('#name');
   const n = el ? el.value.trim() : '';
   if (!n) { showToast('名前を入力してください'); return null; }
-  try { localStorage.setItem('cc_name', n); } catch (e) {}
+  const rEl = $('#ruby');
+  myRuby = rEl ? rEl.value.trim().slice(0, 24) : '';
+  try { localStorage.setItem('cc_name', n); localStorage.setItem('cc_ruby', myRuby); } catch (e) {}
   return n;
 }
 
@@ -289,7 +304,7 @@ function render() {
   $('#dock').style.display = S ? 'flex' : 'none';
   renderKick();
   if (!S) {
-    if (viewKey !== 'top') { viewKey = 'top'; renderTop(); }
+    if (viewKey !== 'top') { viewKey = 'top'; renderTop(); updateNamePreview(); }
     return;
   }
   const key = S.phase + ':' + S.round;
@@ -300,7 +315,8 @@ function render() {
 
 function renderTop() {
   let name = '';
-  try { name = localStorage.getItem('cc_name') || ''; } catch (e) {}
+  let ruby = '';
+  try { name = localStorage.getItem('cc_name') || ''; ruby = localStorage.getItem('cc_ruby') || ''; } catch (e) {}
   const pre = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
   $('#app').innerHTML = `
   <div class="wrap center">
@@ -308,6 +324,8 @@ function renderTop() {
     <p class="sub">漢字に、最も響く横文字を。</p>
     <label>名前</label>
     <input id="name" maxlength="12" value="${esc(name)}" placeholder="名前(12文字まで)" autocomplete="off">
+    <input id="ruby" maxlength="24" value="${esc(ruby)}" placeholder="ふりがな(任意・名前の上に小さく表示)" autocomplete="off" style="margin-top:8px">
+    <div id="namePreview" class="preview"></div>
     <button class="btn primary" data-act="quick">ランダムマッチ</button>
     <div class="hr">または</div>
     <button class="btn" data-act="create">ルームを作る</button>
@@ -399,7 +417,7 @@ function build() {
           <div class="entry ${e.votes === topVotes && topVotes > 0 ? 'top' : ''}">
             <span class="v">${e.votes}票</span>
             <div class="t">${ansHtml(e)}</div>
-            <div class="m">${esc(e.name)}${e.voters.length ? ' ← ' + e.voters.map(esc).join('、') : ''}</div>
+            <div class="m">${nm(e.name)}${e.voters.length ? ' ← ' + e.voters.map(nm).join('、') : ''}</div>
           </div>`).join('')
         : '<p class="note">誰も回答しませんでした</p>';
       app.innerHTML = `
@@ -419,13 +437,13 @@ function build() {
       const rows = S.ranking.map((r, i) => `
         <div class="rank ${r.winner ? 'win' : ''}">
           <span class="n">${r.winner ? '👑' : i + 1}</span>
-          <span class="nm">${esc(r.name)}${r.left ? '(退出)' : ''}</span>
+          <span class="nm">${nm(r.name)}${r.left ? '(退出)' : ''}</span>
           <span class="sc">${r.total}票</span>
         </div>`).join('');
       app.innerHTML = `
       <div class="wrap">
         <div class="crown">👑</div>
-        <h1 class="title" style="font-size:28px;margin:8px 0 4px;text-align:center">${win.map((w) => esc(w.name)).join(' & ')}</h1>
+        <h1 class="title" style="font-size:28px;margin:8px 0 4px;text-align:center">${win.map((w) => nm(w.name)).join(' & ')}</h1>
         <p class="sub" style="text-align:center">厨二王選手権 王者</p>
         ${rows}
         <div id="finalActions"></div>
@@ -439,7 +457,7 @@ function plistHtml() {
   const showPt = S.phase !== 'lobby';
   return S.players.map((p) => `
     <span class="chip ${p.connected ? '' : 'off'} ${p.done ? 'done' : ''}">
-      ${p.id === S.hostId ? '👑 ' : ''}${p.voice ? '🎤 ' : ''}${esc(p.name)}${p.done ? ' ✓' : ''}${p.left ? '(退出)' : (!p.connected ? '(切断中)' : '')}${showPt ? `<span class="pt">${p.total}pt</span>` : ''}
+      ${p.id === S.hostId ? '👑 ' : ''}${p.voice ? '🎤 ' : ''}${nm(p.name)}${p.done ? ' ✓' : ''}${p.left ? '(退出)' : (!p.connected ? '(切断中)' : '')}${showPt ? `<span class="pt">${p.total}pt</span>` : ''}
     </span>`).join('');
 }
 
@@ -483,6 +501,7 @@ function update() {
     $('#lobbyActions').innerHTML = (isHost
       ? `<button class="btn primary" data-act="start" ${conn < S.minPlayers ? 'disabled' : ''}>ゲーム開始${conn < S.minPlayers ? `(あと${S.minPlayers - conn}人)` : ''}</button>`
       : `<p class="note center">ホストの開始を待っています…</p>`)
+      + (isHost && !S.isPublic ? `<div class="row" style="gap:8px"><button class="btn" style="width:auto;flex:1" data-act="botAdd">CPUを追加(テスト用)</button><button class="btn" style="width:auto;flex:1" data-act="botDel">CPUを減らす</button></div>` : '')
       + `<button class="btn" data-act="leave">退出</button>`;
   }
 
@@ -510,7 +529,7 @@ function update() {
     $('#presentList').innerHTML = pr.items.map((it, i) => ({ it, i })).reverse().map(({ it, i }) => `
       <div class="entry ${i === pr.idx ? 'top' : ''}">
         <div class="t">${ansHtml(it)}</div>
-        <div class="m">${esc(it.name)}${it.mine ? '(あなた)' : ''}</div>
+        <div class="m">${nm(it.name)}${it.mine ? '(あなた)' : ''}</div>
       </div>`).join('');
     $('#presentActions').innerHTML = `<p class="note center">${pr.idx + 1} / ${pr.total} 人目</p>` + (isHost
       ? `<button class="btn primary" data-act="presnext">${pr.last ? '投票へ' : '次の発表へ'}</button>`
@@ -521,7 +540,7 @@ function update() {
     const voted = S.myVote != null;
     $('#opts').innerHTML = S.options.map((o) => `
       <button class="opt ${o.mine ? 'mine' : ''} ${S.myVote === o.idx ? 'sel' : ''}" data-act="vote" data-idx="${o.idx}" ${o.mine || voted ? 'disabled' : ''}>
-        <span class="who">${esc(o.name)}</span>${ansHtml(o)}${o.mine ? '<small>あなたの回答</small>' : ''}${S.myVote === o.idx ? '<small>投票済み</small>' : ''}
+        <span class="who">${nm(o.name)}</span>${ansHtml(o)}${o.mine ? '<small>あなたの回答</small>' : ''}${S.myVote === o.idx ? '<small>投票済み</small>' : ''}
       </button>`).join('');
     const done = S.players.filter((p) => p.connected && p.done).length;
     $('#status').textContent = `投票 ${done} / ${conn}`;
@@ -672,7 +691,7 @@ let unread = 0;
 function renderChat() {
   const log = $('#chatLog'); if (!log) return;
   log.innerHTML = chatMsgs.map((m) =>
-    `<div class="msg ${S && m.from === S.me ? 'me' : ''}"><b>${esc(m.name)}</b>${esc(m.text)}</div>`).join('');
+    `<div class="msg ${S && m.from === S.me ? 'me' : ''}"><b>${nm(m.name)}</b>${esc(m.text)}</div>`).join('');
   log.scrollTop = log.scrollHeight;
 }
 function onChat(m) {
@@ -814,10 +833,10 @@ function updateDock() {
 function openKickPick() {
   if (!S) return;
   if (S.kick) { showToast('すでにキック投票が行われています'); return; }
-  if (S.players.filter((p) => p.connected).length < 3) { showToast('キック投票は3人以上いるときに使えます'); return; }
-  const cands = S.players.filter((p) => p.connected && p.id !== S.me);
+  if (S.players.filter((p) => p.connected && !p.bot).length < 3) { showToast('キック投票は3人以上いるときに使えます'); return; }
+  const cands = S.players.filter((p) => p.connected && !p.bot && p.id !== S.me);
   $('#kickList').innerHTML = cands.map((p) =>
-    `<button class="btn" data-act="kickpick" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('');
+    `<button class="btn" data-act="kickpick" data-id="${esc(p.id)}">${nm(p.name)}</button>`).join('');
   $('#kickPick').style.display = 'flex';
 }
 function closeKickPick() { $('#kickPick').style.display = 'none'; }
@@ -827,7 +846,7 @@ function renderKick() {
   const k = S && S.kick;
   if (!S || S.kick) closeKickPick();
   if (!k) { m.style.display = 'none'; return; }
-  const head = `<p><b>${esc(k.byName)}</b> さんが <b>${esc(k.targetName)}</b> さんのキック投票を始めました</p>`;
+  const head = `<p><b>${nm(k.byName)}</b> さんが <b>${nm(k.targetName)}</b> さんのキック投票を始めました</p>`;
   const info = `<p class="kicknote">賛成 ${k.yes} / 必要 ${k.needed}(投票できる人 ${k.total}人) ・ 残り <span id="kickSec"></span>秒</p>`;
   let body;
   if (k.isTarget) body = `<p class="kicknote">あなたに対する投票です。結果をお待ちください。</p>`;
@@ -848,7 +867,7 @@ function todayStr() {
 function requestQuick(name) {
   let seen = null;
   try { seen = localStorage.getItem('cc_manner_date'); } catch (e) {}
-  if (seen === todayStr()) { socket.emit('quick', { pid, name }); return; }
+  if (seen === todayStr()) { socket.emit('quick', { pid, name, ruby: myRuby }); return; }
   pendingQuickName = name;
   $('#mannerModal').style.display = 'flex';
 }
@@ -858,7 +877,7 @@ function mannerAnswer(agree) {
   pendingQuickName = null;
   if (!agree || !name) return;
   try { localStorage.setItem('cc_manner_date', todayStr()); } catch (e) {}
-  socket.emit('quick', { pid, name });
+  socket.emit('quick', { pid, name, ruby: myRuby });
 }
 
 // ---------- 操作 ----------
@@ -885,6 +904,15 @@ function submitAnswer() {
   socket.emit('answer', { text });
 }
 
+function updateNamePreview() {
+  const p = $('#namePreview'); if (!p) return;
+  const n = ($('#name').value || '').trim(), r = ($('#ruby').value || '').trim();
+  p.innerHTML = n ? nm(r ? n + RUBY_SEP + r : n) : '';
+}
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'name' || e.target.id === 'ruby') updateNamePreview();
+});
+
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
   if (!b || b.disabled) return;
@@ -892,14 +920,16 @@ document.addEventListener('click', (e) => {
   if (act === 'quick') { const name = getName(); if (name) requestQuick(name); }
   else if (act === 'mannerYes') mannerAnswer(true);
   else if (act === 'mannerNo') mannerAnswer(false);
-  else if (act === 'create') { const name = getName(); if (name) socket.emit('create', { pid, name }); }
+  else if (act === 'create') { const name = getName(); if (name) socket.emit('create', { pid, name, ruby: myRuby }); }
   else if (act === 'join') {
     const name = getName(); if (!name) return;
     const code = ($('#code').value || '').trim().toUpperCase();
     if (code.length !== 4) { showToast('4文字のコードを入力してください'); return; }
-    socket.emit('join', { pid, name, code });
+    socket.emit('join', { pid, name, ruby: myRuby, code });
   }
   else if (act === 'start') socket.emit('start');
+  else if (act === 'botAdd') socket.emit('bot:add');
+  else if (act === 'botDel') socket.emit('bot:remove');
   else if (act === 'submit') submitAnswer();
   else if (act === 'resumeYes') { hideResume(); socket.emit('resume', { pid }); }
   else if (act === 'resumeNo') { hideResume(); socket.emit('abandon', { pid }); }
