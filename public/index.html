@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>厨二王選手権</title>
+<style>
+  :root {
+    --bg: #0b0a12;
+    --panel: #151324;
+    --panel2: #1d1a31;
+    --line: #34305a;
+    --text: #ece8ff;
+    --sub: #9a94c4;
+    --accent: #b02bff;
+    --crimson: #e0314b;
+    --gold: #f2c14e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 500px at 50% -10%, #2a1050 0%, transparent 60%),
+      radial-gradient(600px 400px at 100% 100%, #3a0a1c 0%, transparent 60%),
+      var(--bg);
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 96px; }
+  .center { text-align: center; }
+  .title {
+    font-size: 40px; letter-spacing: .08em; margin: 36px 0 4px;
+    background: linear-gradient(180deg, #fff, #c58bff 55%, #e0314b);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 24px rgba(176,43,255,.35);
+  }
+  .sub { color: var(--sub); margin: 0 0 28px; letter-spacing: .1em; }
+  label { display: block; text-align: left; color: var(--sub); font-size: 13px; margin: 14px 0 6px; }
+  input, select {
+    width: 100%; padding: 13px 14px; font-size: 16px; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    font-family: inherit; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(176,43,255,.2); }
+  input:disabled { opacity: .7; }
+  .btn {
+    display: block; width: 100%; margin-top: 12px; padding: 14px; font-size: 16px;
+    color: var(--text); background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 10px; font-family: inherit; cursor: pointer; letter-spacing: .05em;
+  }
+  .btn:active { transform: scale(.99); }
+  .btn.primary { background: linear-gradient(90deg, #7a1fd1, #b02bff 50%, #e0314b); border: none; font-weight: 700; }
+  .btn.small { width: auto; margin: 0; padding: 8px 12px; font-size: 13px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  .row input { flex: 1; text-transform: uppercase; letter-spacing: .2em; text-align: center; }
+  .row .btn { margin: 0; width: 96px; }
+  .hr { color: var(--sub); font-size: 13px; margin: 18px 0 4px; }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tag { font-size: 12px; color: var(--sub); letter-spacing: .15em; }
+  .code { font-size: 30px; letter-spacing: .3em; color: var(--gold); flex: 1; }
+  h3 { margin: 22px 0 8px; font-size: 15px; color: var(--sub); font-weight: 400; letter-spacing: .1em; }
+  .note { color: var(--sub); font-size: 13px; margin: 10px 0; min-height: 1em; }
+  .plist { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 7px 12px; border-radius: 999px; font-size: 14px;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .chip.off { opacity: .4; }
+  .chip.done { border-color: #3fbf7f; color: #aef0cc; }
+  .chip .pt { color: var(--gold); margin-left: 6px; font-size: 12px; }
+  .timer {
+    position: relative; height: 22px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; overflow: hidden; margin: 4px 0 14px;
+  }
+  #bar { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(90deg, #7a1fd1, #e0314b); transition: width .2s linear; }
+  #timerText { position: relative; display: block; text-align: center; font-size: 13px; line-height: 22px; }
+  .lead { color: var(--sub); text-align: center; margin: 14px 0 6px; font-size: 14px; }
+  .theme {
+    text-align: center; font-size: 46px; letter-spacing: .12em; padding: 22px 8px; margin: 6px 0 16px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    text-shadow: 0 0 20px rgba(224,49,75,.5); word-break: keep-all;
+  }
+  .theme.small { font-size: 34px; padding: 14px 8px; }
+  .opt {
+    display: block; width: 100%; text-align: left; margin-top: 10px; padding: 15px 16px; font-size: 19px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    color: var(--text); font-family: inherit; cursor: pointer;
+  }
+  .opt:disabled { cursor: default; }
+  .opt.mine { opacity: .45; border-style: dashed; }
+  .opt.sel { border-color: var(--gold); background: #2a2310; }
+  .opt small { color: var(--sub); font-size: 12px; margin-left: 8px; }
+  .opt .who { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+  .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 10px; }
+  .entry.top { border-color: var(--gold); box-shadow: 0 0 18px rgba(242,193,78,.18); }
+  .entry .t { font-size: 22px; }
+  .entry .m { color: var(--sub); font-size: 13px; margin-top: 6px; }
+  .entry .v { float: right; color: var(--gold); font-size: 20px; }
+  .rank { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-top: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .rank.win { border-color: var(--gold); background: #2a2310; }
+  .rank .n { width: 28px; color: var(--sub); }
+  .rank .nm { flex: 1; font-size: 18px; }
+  .rank .sc { color: var(--gold); font-size: 20px; }
+  .crown { font-size: 44px; text-align: center; margin: 10px 0 0; }
+  .settings { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .settings label { margin: 0 0 4px; font-size: 12px; }
+  .settings select { padding: 10px 8px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+  .tab {
+    flex: 1; padding: 11px 8px; font-size: 15px; font-family: inherit; color: var(--sub);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+  }
+  .tab.on { color: var(--text); border-color: var(--accent); background: var(--panel2); box-shadow: 0 0 0 2px rgba(176,43,255,.2); }
+  .canvasbox { position: relative; }
+  canvas#pad {
+    display: block; width: 100%; aspect-ratio: 800 / 320; touch-action: none;
+    background: #0f0d1c; border: 1px solid var(--line); border-radius: 12px; cursor: crosshair;
+  }
+  .padhint {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--sub); opacity: .6; pointer-events: none; font-size: 15px;
+  }
+  .row2 { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+  .aimg { display: block; max-width: 100%; max-height: 110px; }
+  .mine { background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px; font-size: 22px; text-align: center; }
+  .mine .aimg { margin: 0 auto; }
+  #dock {
+    position: fixed; left: 0; right: 0; bottom: 0; display: none; gap: 8px; justify-content: center; flex-wrap: wrap;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(11,10,18,.96) 45%); z-index: 20;
+  }
+  .dbtn {
+    position: relative; padding: 11px 13px; font-size: 14px; font-family: inherit; color: var(--text);
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+  }
+  .dbtn.on { border-color: #3fbf7f; box-shadow: 0 0 0 2px rgba(63,191,127,.2); }
+  .dbtn.muted { border-color: var(--crimson); box-shadow: 0 0 0 2px rgba(224,49,75,.2); }
+  .badge {
+    position: absolute; top: -6px; right: -4px; min-width: 20px; padding: 2px 5px; font-size: 12px;
+    background: var(--crimson); color: #fff; border-radius: 999px; text-align: center;
+  }
+  #chat {
+    position: fixed; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; height: 60vh;
+    display: none; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px 16px 0 0; z-index: 30; padding-bottom: env(safe-area-inset-bottom);
+  }
+  .chathead { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--sub); }
+  #chatLog { flex: 1; overflow-y: auto; padding: 10px 14px; }
+  .msg { margin: 6px 0; font-size: 15px; word-break: break-word; }
+  .msg b { color: var(--sub); font-weight: 400; margin-right: 6px; font-size: 13px; }
+  .msg.me b { color: var(--gold); }
+  .chatform { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .chatform input { flex: 1; padding: 10px 12px; }
+  .modal {
+    position: fixed; inset: 0; background: rgba(5,4,10,.82); display: none; align-items: center;
+    justify-content: center; z-index: 50;
+  }
+  .modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; width: min(90vw, 380px); text-align: center; }
+  .modal .box p { margin: 0 0 8px; font-size: 18px; line-height: 1.6; }
+  #mannerModal { z-index: 55; }
+  .manner { margin: 0 0 12px; padding-left: 20px; font-size: 15px; line-height: 1.7; color: var(--text); }
+  #kickModal { z-index: 40; }
+  #kickPick { z-index: 45; }
+  .kicknote { font-size: 14px; color: var(--sub); }
+  #toast {
+    position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
+    background: #2a2540; color: var(--text); padding: 10px 16px; border-radius: 999px;
+    border: 1px solid var(--line); font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s;
+    max-width: 90vw; text-align: center;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="dock">
+  <button class="dbtn" id="callBtn" data-act="call">📞 通話に参加</button>
+  <button class="dbtn" id="micBtn" data-act="mic" style="display:none">🎤 マイクON</button>
+  <button class="dbtn" id="chatBtn" data-act="chat">💬 チャット<span class="badge" id="badge" style="display:none">0</span></button>
+  <button class="dbtn" data-act="kick">🚫 キック</button>
+</div>
+<div id="chat">
+  <div class="chathead"><span>チャット</span><button class="btn small" data-act="chatclose">閉じる</button></div>
+  <div id="chatLog"></div>
+  <div class="chatform">
+    <input id="chatInput" maxlength="100" placeholder="メッセージ" autocomplete="off">
+    <button class="btn small" data-act="chatsend">送信</button>
+  </div>
+</div>
+<div id="kickPick" class="modal">
+  <div class="box">
+    <p>キックする人を選んでください</p>
+    <div id="kickList"></div>
+    <button class="btn" data-act="kickcancel">キャンセル</button>
+  </div>
+</div>
+<div id="kickModal" class="modal">
+  <div class="box" id="kickBox"></div>
+</div>
+<div id="mannerModal" class="modal">
+  <div class="box" style="text-align:left">
+    <p style="text-align:center"><b>みんなで気持ちよく遊ぶために</b></p>
+    <ul class="manner">
+      <li>悪口・差別・人格攻撃・個人情報の書き込みはしない</li>
+      <li>他の人の回答を馬鹿にしたり、勝敗で煽ったりしない</li>
+      <li>通話は大声・騒音・しつこい絡みをしない(通話は入りたい人だけ。いつでもミュート・退出できます)</li>
+      <li>迷惑な人がいたら「🚫 キック」で投票して退出させられます(賛成が2/3以上でキック。ただし乱用は禁止です)</li>
+    </ul>
+    <button class="btn primary" data-act="mannerYes">守って遊ぶ</button>
+    <button class="btn" data-act="mannerNo">やめる</button>
+  </div>
+</div>
+<div id="resumeModal" class="modal">
+  <div class="box">
+    <p id="resumeText"></p>
+    <button class="btn primary" data-act="resumeYes">復帰する</button>
+    <button class="btn" data-act="resumeNo">復帰しない</button>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let pid = null;
+try { pid = localStorage.getItem('cc_pid'); } catch (e) {}
+if (!pid) {
+  pid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Math.random()).slice(2) + Date.now() + '-xxxxxxxx');
+  try { localStorage.setItem('cc_pid', pid); } catch (e) {}
+}
+
+const socket = io();
+let S = null;
+let viewKey = '';
+let endLocal = 0;
+let totalMs = 0;
+let lastSettingsKey = '';
+let kickEndLocal = 0;
+
+// 接続したら、戻れる部屋があるか確認だけする(復帰するかはユーザーに聞く)
+socket.on('connect', () => socket.emit('peek', { pid }));
+socket.on('disconnect', () => { closeAllPeers(); voiceJoined = false; });
+socket.on('resumable', (info) => showResume(info));
+socket.on('state', (st) => {
+  S = st;
+  endLocal = Date.now() + (st.endsInMs || 0);
+  totalMs = st.totalMs || 0;
+  kickEndLocal = st.kick ? Date.now() + st.kick.endsInMs : 0;
+  render();
+  // 再接続後は通話にも入り直す
+  if (voiceWanted && !voiceJoined) { voiceJoined = true; socket.emit('voice:join'); }
+});
+socket.on('left', () => {
+  S = null; hideResume(); stopVoice(); chatMsgs = []; unread = 0; closeChat(); render();
+});
+socket.on('kicked', () => {
+  S = null; hideResume(); stopVoice(); chatMsgs = []; unread = 0; closeChat(); render();
+  showToast('投票によりルームからキックされました');
+});
+socket.on('toast', showToast);
+socket.on('chatlog', (log) => { chatMsgs = log; unread = 0; renderChat(); updateDock(); });
+socket.on('chat', onChat);
+socket.on('voice:peers', (list) => list.forEach((p) => createPeer(p.id, true)));
+socket.on('voice:left', ({ id }) => closePeer(id));
+socket.on('voice:signal', onSignal);
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function getName() {
+  const el = $('#name');
+  const n = el ? el.value.trim() : '';
+  if (!n) { showToast('名前を入力してください'); return null; }
+  try { localStorage.setItem('cc_name', n); } catch (e) {}
+  return n;
+}
+
+// ---------- 描画 ----------
+function render() {
+  $('#dock').style.display = S ? 'flex' : 'none';
+  renderKick();
+  if (!S) {
+    if (viewKey !== 'top') { viewKey = 'top'; renderTop(); }
+    return;
+  }
+  const key = S.phase + ':' + S.round;
+  if (key !== viewKey) { viewKey = key; build(); lastSettingsKey = ''; }
+  update();
+  updateDock();
+}
+
+function renderTop() {
+  let name = '';
+  try { name = localStorage.getItem('cc_name') || ''; } catch (e) {}
+  const pre = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+  $('#app').innerHTML = `
+  <div class="wrap center">
+    <h1 class="title">厨二王選手権</h1>
+    <p class="sub">漢字に、最も響く横文字を。</p>
+    <label>名前</label>
+    <input id="name" maxlength="12" value="${esc(name)}" placeholder="名前(12文字まで)" autocomplete="off">
+    <button class="btn primary" data-act="quick">ランダムマッチ</button>
+    <div class="hr">または</div>
+    <button class="btn" data-act="create">ルームを作る</button>
+    <div class="row">
+      <input id="code" maxlength="4" placeholder="CODE" value="${esc(pre)}" autocomplete="off">
+      <button class="btn" data-act="join">入室</button>
+    </div>
+    <p class="note" style="margin-top:24px">3〜8人で遊べます</p>
+  </div>`;
+}
+
+function build() {
+  const app = $('#app');
+  const timer = `<div class="timer"><div id="bar"></div><span id="timerText"></span></div>`;
+  switch (S.phase) {
+    case 'lobby':
+      app.innerHTML = `
+      <div class="wrap">
+        <div class="head"><span class="tag">ROOM</span><div class="code">${esc(S.code)}</div>
+          <button class="btn small" data-act="share">招待</button></div>
+        <div id="lobbyInfo" class="note"></div>
+        <h3>参加者 <span id="pcount"></span></h3>
+        <div id="plist" class="plist"></div>
+        <h3>設定</h3>
+        <div id="settings"></div>
+        <div id="lobbyActions"></div>
+      </div>`;
+      break;
+    case 'answer':
+      app.innerHTML = `
+      <div class="wrap">
+        <div class="head"><span class="tag">ROUND ${S.round} / ${S.rounds}</span></div>
+        ${timer}
+        <p class="lead">この言葉に、横文字を与えよ</p>
+        <div class="theme">${esc(S.theme)}</div>
+        <div class="tabs" id="tabs">
+          <button class="tab" data-act="mode" data-mode="hand">✍ 手書き</button>
+          <button class="tab" data-act="mode" data-mode="type">⌨ 入力</button>
+        </div>
+        <div id="handArea">
+          <div class="canvasbox">
+            <canvas id="pad" width="800" height="320"></canvas>
+            <div id="padHint" class="padhint">ここに指やペンで書く</div>
+          </div>
+          <div class="row2">
+            <button class="btn small" data-act="undo">1つ戻す</button>
+            <button class="btn small" data-act="clear">全部消す</button>
+          </div>
+        </div>
+        <div id="typeArea"><input id="ans" maxlength="30" placeholder="例:ヘルファイア" autocomplete="off"></div>
+        <div id="mine" class="mine" style="display:none"></div>
+        <button class="btn primary" id="sub" data-act="submit">提出</button>
+        <div id="status" class="note"></div>
+        <div id="plist" class="plist"></div>
+      </div>`;
+      $('#ans').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) submitAnswer(); });
+      initPad();
+      applyMode();
+      break;
+    case 'present':
+      app.innerHTML = `
+      <div class="wrap">
+        <div class="head"><span class="tag">ROUND ${S.round} / ${S.rounds} ・ 発表</span></div>
+        ${timer}
+        <div class="theme small">${esc(S.theme)}</div>
+        <p class="lead">1人ずつ発表!声やチャットで読み上げよう</p>
+        <div id="presentList"></div>
+        <div id="presentActions"></div>
+        <div id="plist" class="plist"></div>
+      </div>`;
+      break;
+    case 'vote':
+      app.innerHTML = `
+      <div class="wrap">
+        <div class="head"><span class="tag">ROUND ${S.round} / ${S.rounds} ・ 投票</span></div>
+        ${timer}
+        <div class="theme small">${esc(S.theme)}</div>
+        <p class="lead">最もしっくりきて、かっこいいものを選べ<br><small>(自分の回答には投票できません)</small></p>
+        <div id="opts"></div>
+        <div id="status" class="note"></div>
+        <div id="plist" class="plist"></div>
+      </div>`;
+      break;
+    case 'result': {
+      const entries = S.result.entries;
+      const topVotes = entries.length ? entries[0].votes : 0;
+      const list = entries.length
+        ? entries.map((e) => `
+          <div class="entry ${e.votes === topVotes && topVotes > 0 ? 'top' : ''}">
+            <span class="v">${e.votes}票</span>
+            <div class="t">${ansHtml(e)}</div>
+            <div class="m">${esc(e.name)}${e.voters.length ? ' ← ' + e.voters.map(esc).join('、') : ''}</div>
+          </div>`).join('')
+        : '<p class="note">誰も回答しませんでした</p>';
+      app.innerHTML = `
+      <div class="wrap">
+        <div class="head"><span class="tag">ROUND ${S.round} / ${S.rounds} ・ 結果</span></div>
+        ${timer}
+        <div class="theme small">${esc(S.result.theme)}</div>
+        ${list}
+        <h3>現在の得点</h3>
+        <div id="plist" class="plist"></div>
+        <div id="nextArea"></div>
+      </div>`;
+      break;
+    }
+    case 'final': {
+      const win = S.ranking.filter((r) => r.winner);
+      const rows = S.ranking.map((r, i) => `
+        <div class="rank ${r.winner ? 'win' : ''}">
+          <span class="n">${r.winner ? '👑' : i + 1}</span>
+          <span class="nm">${esc(r.name)}${r.left ? '(退出)' : ''}</span>
+          <span class="sc">${r.total}票</span>
+        </div>`).join('');
+      app.innerHTML = `
+      <div class="wrap">
+        <div class="crown">👑</div>
+        <h1 class="title" style="font-size:28px;margin:8px 0 4px;text-align:center">${win.map((w) => esc(w.name)).join(' & ')}</h1>
+        <p class="sub" style="text-align:center">厨二王選手権 王者</p>
+        ${rows}
+        <div id="finalActions"></div>
+      </div>`;
+      break;
+    }
+  }
+}
+
+function plistHtml() {
+  const showPt = S.phase !== 'lobby';
+  return S.players.map((p) => `
+    <span class="chip ${p.connected ? '' : 'off'} ${p.done ? 'done' : ''}">
+      ${p.id === S.hostId ? '👑 ' : ''}${p.voice ? '🎤 ' : ''}${esc(p.name)}${p.done ? ' ✓' : ''}${p.left ? '(退出)' : (!p.connected ? '(切断中)' : '')}${showPt ? `<span class="pt">${p.total}pt</span>` : ''}
+    </span>`).join('');
+}
+
+function opt(list, cur, suffix) {
+  const set = new Set([...list, cur]);
+  return [...set].sort((a, b) => a - b).map((v) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v}${suffix}</option>`).join('');
+}
+
+function update() {
+  const isHost = S.me === S.hostId;
+  const pl = $('#plist');
+  if (pl) pl.innerHTML = plistHtml();
+  const conn = S.players.filter((p) => p.connected).length;
+
+  if (S.phase === 'lobby') {
+    $('#pcount').textContent = `(${S.players.length}/${S.maxPlayers})`;
+    const info = $('#lobbyInfo');
+    if (S.isPublic) {
+      info.innerHTML = conn >= S.minPlayers && S.timerKind === 'auto'
+        ? `ランダムマッチ部屋 ・ <span id="autoText"></span>秒後に自動で開始します`
+        : `ランダムマッチ部屋 ・ ${S.minPlayers}人集まると自動で開始します`;
+    } else {
+      info.textContent = 'コードか招待リンクを友達に送ろう';
+    }
+    // 設定
+    const sk = JSON.stringify([S.settings, isHost]);
+    const sEl = $('#settings');
+    if (sk !== lastSettingsKey && !sEl.contains(document.activeElement)) {
+      lastSettingsKey = sk;
+      if (isHost) {
+        sEl.innerHTML = `<div class="settings">
+          <div><label>ラウンド数</label><select id="sRounds">${opt([3, 5, 7, 10], S.settings.rounds, '回')}</select></div>
+          <div><label>回答時間</label><select id="sAns">${opt([30, 45, 60, 90], S.settings.answerSec, '秒')}</select></div>
+          <div><label>投票時間</label><select id="sVote">${opt([20, 30, 45, 60], S.settings.voteSec, '秒')}</select></div>
+        </div>`;
+        ['#sRounds', '#sAns', '#sVote'].forEach((id) => $(id).addEventListener('change', sendSettings));
+      } else {
+        sEl.innerHTML = `<p class="note">${S.settings.rounds}ラウンド ・ 回答${S.settings.answerSec}秒 ・ 投票${S.settings.voteSec}秒</p>`;
+      }
+    }
+    $('#lobbyActions').innerHTML = (isHost
+      ? `<button class="btn primary" data-act="start" ${conn < S.minPlayers ? 'disabled' : ''}>ゲーム開始${conn < S.minPlayers ? `(あと${S.minPlayers - conn}人)` : ''}</button>`
+      : `<p class="note center">ホストの開始を待っています…</p>`)
+      + `<button class="btn" data-act="leave">退出</button>`;
+  }
+
+  if (S.phase === 'answer') {
+    const submitted = S.myAnswer != null;
+    if (submitted) {
+      $('#tabs').style.display = 'none';
+      $('#handArea').style.display = 'none';
+      $('#typeArea').style.display = 'none';
+      const m = $('#mine');
+      m.style.display = '';
+      m.innerHTML = ansHtml(S.myAnswer);
+      $('#sub').disabled = true;
+      $('#sub').textContent = '提出済み';
+    } else {
+      applyMode();
+    }
+    const done = S.players.filter((p) => p.connected && p.done).length;
+    $('#status').textContent = `提出 ${done} / ${conn}`;
+  }
+
+  if (S.phase === 'present') {
+    const pr = S.present;
+    // 新しく公開された回答を一番上に表示する
+    $('#presentList').innerHTML = pr.items.map((it, i) => ({ it, i })).reverse().map(({ it, i }) => `
+      <div class="entry ${i === pr.idx ? 'top' : ''}">
+        <div class="t">${ansHtml(it)}</div>
+        <div class="m">${esc(it.name)}${it.mine ? '(あなた)' : ''}</div>
+      </div>`).join('');
+    $('#presentActions').innerHTML = `<p class="note center">${pr.idx + 1} / ${pr.total} 人目</p>` + (isHost
+      ? `<button class="btn primary" data-act="presnext">${pr.last ? '投票へ' : '次の発表へ'}</button>`
+      : '');
+  }
+
+  if (S.phase === 'vote') {
+    const voted = S.myVote != null;
+    $('#opts').innerHTML = S.options.map((o) => `
+      <button class="opt ${o.mine ? 'mine' : ''} ${S.myVote === o.idx ? 'sel' : ''}" data-act="vote" data-idx="${o.idx}" ${o.mine || voted ? 'disabled' : ''}>
+        <span class="who">${esc(o.name)}</span>${ansHtml(o)}${o.mine ? '<small>あなたの回答</small>' : ''}${S.myVote === o.idx ? '<small>投票済み</small>' : ''}
+      </button>`).join('');
+    const done = S.players.filter((p) => p.connected && p.done).length;
+    $('#status').textContent = `投票 ${done} / ${conn}`;
+  }
+
+  if (S.phase === 'result') {
+    $('#nextArea').innerHTML = isHost
+      ? `<button class="btn primary" data-act="next">${S.last ? '最終結果へ' : '次のラウンドへ'}</button>`
+      : `<p class="note center">${S.last ? 'まもなく最終結果' : 'まもなく次のラウンド'}</p>`;
+  }
+
+  if (S.phase === 'final') {
+    $('#finalActions').innerHTML = (isHost
+      ? `<button class="btn primary" data-act="again">もう一度遊ぶ</button>`
+      : `<p class="note center">ホストが「もう一度」を押すとロビーに戻ります</p>`)
+      + `<button class="btn" data-act="leave">退出</button>`;
+  }
+  tick();
+}
+
+function tick() {
+  if (!S) return;
+  const ms = Math.max(0, endLocal - Date.now());
+  const sec = Math.ceil(ms / 1000);
+  const t = $('#timerText'); if (t) t.textContent = S.endsInMs == null ? '' : sec;
+  const b = $('#bar'); if (b) b.style.width = (S.endsInMs != null && totalMs ? (ms / totalMs) * 100 : 0) + '%';
+  const a = $('#autoText'); if (a) a.textContent = sec;
+  const ks = $('#kickSec'); if (ks) ks.textContent = Math.ceil(Math.max(0, kickEndLocal - Date.now()) / 1000);
+}
+setInterval(tick, 200);
+
+// ---------- 回答の表示(テキスト/手書き画像) ----------
+function ansHtml(a) {
+  return a.kind === 'img'
+    ? `<img class="aimg" src="${esc(a.value)}" alt="手書きの回答">`
+    : esc(a.value);
+}
+
+// ---------- 手書きパッド ----------
+let answerMode = 'hand'; // 初期は手書き
+try { answerMode = localStorage.getItem('cc_mode') === 'type' ? 'type' : 'hand'; } catch (e) {}
+let strokes = [];
+let cur = null;
+
+function setMode(m) {
+  answerMode = m === 'type' ? 'type' : 'hand';
+  try { localStorage.setItem('cc_mode', answerMode); } catch (e) {}
+  applyMode();
+  if (answerMode === 'type') { const a = $('#ans'); if (a && !a.disabled) a.focus(); }
+}
+
+function applyMode() {
+  const h = $('#handArea'), t = $('#typeArea');
+  if (!h || !t) return;
+  const hand = answerMode === 'hand';
+  h.style.display = hand ? '' : 'none';
+  t.style.display = hand ? 'none' : '';
+  document.querySelectorAll('#tabs .tab').forEach((el) => el.classList.toggle('on', el.dataset.mode === answerMode));
+}
+
+function padCtx() {
+  const g = $('#pad').getContext('2d');
+  g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 7;
+  g.strokeStyle = '#fff'; g.fillStyle = '#fff';
+  return g;
+}
+
+function padRedraw() {
+  const c = $('#pad'); if (!c) return;
+  const g = padCtx();
+  g.clearRect(0, 0, c.width, c.height);
+  for (const s of strokes) {
+    if (s.length === 1) { g.beginPath(); g.arc(s[0].x, s[0].y, 3.5, 0, Math.PI * 2); g.fill(); }
+    else { g.beginPath(); g.moveTo(s[0].x, s[0].y); for (let i = 1; i < s.length; i++) g.lineTo(s[i].x, s[i].y); g.stroke(); }
+  }
+  const hint = $('#padHint'); if (hint) hint.style.display = strokes.length ? 'none' : '';
+}
+
+function padPoint(e) {
+  const c = $('#pad'); const r = c.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * c.width / r.width, y: (e.clientY - r.top) * c.height / r.height };
+}
+
+function initPad() {
+  strokes = []; cur = null;
+  const c = $('#pad'); if (!c) return;
+  c.addEventListener('pointerdown', (e) => {
+    if (S && S.myAnswer != null) return;
+    e.preventDefault();
+    c.setPointerCapture(e.pointerId);
+    cur = [padPoint(e)];
+    strokes.push(cur);
+    padRedraw();
+  });
+  c.addEventListener('pointermove', (e) => {
+    if (!cur) return;
+    e.preventDefault();
+    const p = padPoint(e), last = cur[cur.length - 1];
+    if (Math.hypot(p.x - last.x, p.y - last.y) < 1.5) return;
+    cur.push(p);
+    const g = padCtx(); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke();
+  });
+  const end = () => { cur = null; };
+  c.addEventListener('pointerup', end);
+  c.addEventListener('pointercancel', end);
+  padRedraw();
+}
+
+function padUndo() { strokes.pop(); padRedraw(); }
+function padClear() { strokes = []; padRedraw(); }
+
+// 書かれた範囲だけを切り出して(大きければ縮小して)PNGのdata URLにする
+function padToDataURL() {
+  if (!strokes.length) return null;
+  const c = $('#pad');
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of strokes) for (const p of s) {
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+  }
+  const pad = 12;
+  minX = Math.max(0, Math.floor(minX - pad)); minY = Math.max(0, Math.floor(minY - pad));
+  maxX = Math.min(c.width, Math.ceil(maxX + pad)); maxY = Math.min(c.height, Math.ceil(maxY + pad));
+  const w = maxX - minX, h = maxY - minY;
+  const scale = Math.min(1, 560 / w, 200 / h);
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round(w * scale));
+  out.height = Math.max(1, Math.round(h * scale));
+  out.getContext('2d').drawImage(c, minX, minY, w, h, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
+}
+
+// ---------- 復帰の確認 ----------
+const PHASE_LABEL = { lobby: 'ロビー', answer: '回答中', present: '発表中', vote: '投票中', result: '結果発表中', final: '最終結果' };
+function showResume(info) {
+  const round = info.round ? ` ・ ラウンド${info.round}/${info.rounds}` : '';
+  $('#resumeText').innerHTML =
+    `ルーム <b>${esc(info.code)}</b> に復帰しますか?<br><small>(${esc(PHASE_LABEL[info.phase] || '')}${round})</small>`;
+  $('#resumeModal').style.display = 'flex';
+}
+function hideResume() { $('#resumeModal').style.display = 'none'; }
+
+// ---------- チャット ----------
+let chatMsgs = [];
+let chatOpen = false;
+let unread = 0;
+
+function renderChat() {
+  const log = $('#chatLog'); if (!log) return;
+  log.innerHTML = chatMsgs.map((m) =>
+    `<div class="msg ${S && m.from === S.me ? 'me' : ''}"><b>${esc(m.name)}</b>${esc(m.text)}</div>`).join('');
+  log.scrollTop = log.scrollHeight;
+}
+function onChat(m) {
+  chatMsgs.push(m);
+  if (chatMsgs.length > 100) chatMsgs.shift();
+  if (!chatOpen && !(S && m.from === S.me)) unread++;
+  renderChat(); updateDock();
+}
+function openChat() {
+  chatOpen = true; unread = 0;
+  $('#chat').style.display = 'flex';
+  renderChat(); updateDock();
+  setTimeout(() => $('#chatInput').focus(), 50);
+}
+function closeChat() { chatOpen = false; $('#chat').style.display = 'none'; updateDock(); }
+function sendChat() {
+  const i = $('#chatInput');
+  const text = i.value.trim();
+  if (!text) return;
+  socket.emit('chat', { text });
+  i.value = '';
+}
+$('#chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) sendChat(); });
+
+// ---------- 通話(WebRTC・参加者どうしを直接つなぐ) ----------
+const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+let localStream = null;
+let voiceWanted = false; // 通話に参加したい状態(再接続時に入り直す)
+let voiceJoined = false; // サーバーに参加を伝え済みか
+let muted = false;
+const peers = new Map(); // 相手の公開ID -> { pc, audio, pending }
+
+async function startVoice() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('この環境ではマイクを使えません(HTTPS接続が必要です)');
+    return;
+  }
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch (e) {
+    showToast('マイクを使えません。ブラウザの許可を確認してください');
+    return;
+  }
+  muted = false; voiceWanted = true; voiceJoined = true;
+  socket.emit('voice:join');
+  updateDock();
+}
+function stopVoice() {
+  if (voiceJoined) socket.emit('voice:leave');
+  voiceWanted = false; voiceJoined = false; muted = false;
+  closeAllPeers();
+  if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
+  updateDock();
+}
+function toggleMute() {
+  if (!localStream) return;
+  muted = !muted;
+  localStream.getAudioTracks().forEach((t) => { t.enabled = !muted; });
+  updateDock();
+}
+
+function createPeer(id, initiator) {
+  closePeer(id);
+  const pc = new RTCPeerConnection(ICE);
+  const entry = { pc, audio: null, pending: [] };
+  peers.set(id, entry);
+  pc.onicecandidate = (e) => {
+    if (e.candidate) socket.emit('voice:signal', { to: id, data: { candidate: e.candidate } });
+  };
+  pc.ontrack = (e) => {
+    if (!entry.audio) {
+      const a = document.createElement('audio');
+      a.autoplay = true; a.playsInline = true; a.style.display = 'none';
+      document.body.appendChild(a);
+      entry.audio = a;
+    }
+    entry.audio.srcObject = e.streams[0];
+    const p = entry.audio.play(); if (p && p.catch) p.catch(() => {});
+  };
+  pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') closePeer(id); };
+  if (initiator) {
+    pc.onnegotiationneeded = async () => {
+      try {
+        await pc.setLocalDescription(await pc.createOffer());
+        socket.emit('voice:signal', { to: id, data: { sdp: pc.localDescription } });
+      } catch (e) {}
+    };
+  }
+  if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+  return entry;
+}
+async function onSignal({ from, data }) {
+  if (!voiceWanted || !data) return;
+  let entry = peers.get(from);
+  // 入り直した相手からの新しい offer は、接続を作り直して受ける
+  if (!entry || (data.sdp && data.sdp.type === 'offer' && entry.pc.remoteDescription)) entry = createPeer(from, false);
+  const pc = entry.pc;
+  try {
+    if (data.sdp) {
+      await pc.setRemoteDescription(data.sdp);
+      for (const c of entry.pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
+      if (data.sdp.type === 'offer') {
+        await pc.setLocalDescription(await pc.createAnswer());
+        socket.emit('voice:signal', { to: from, data: { sdp: pc.localDescription } });
+      }
+    } else if (data.candidate) {
+      if (pc.remoteDescription) await pc.addIceCandidate(data.candidate).catch(() => {});
+      else entry.pending.push(data.candidate);
+    }
+  } catch (e) {}
+}
+function closePeer(id) {
+  const e = peers.get(id); if (!e) return;
+  peers.delete(id);
+  try { e.pc.close(); } catch (x) {}
+  if (e.audio) { e.audio.srcObject = null; e.audio.remove(); }
+}
+function closeAllPeers() { [...peers.keys()].forEach(closePeer); }
+
+function updateDock() {
+  const call = $('#callBtn'), mic = $('#micBtn');
+  if (!call) return;
+  // 通話の参加/退出
+  call.textContent = voiceWanted ? '📞 通話から退出' : '📞 通話に参加';
+  call.classList.toggle('on', voiceWanted);
+  // マイクのON/ミュート(通話中だけ表示)
+  mic.style.display = voiceWanted ? '' : 'none';
+  mic.textContent = muted ? '🔇 ミュート中' : '🎤 マイクON';
+  mic.classList.toggle('on', voiceWanted && !muted);
+  mic.classList.toggle('muted', voiceWanted && muted);
+  const b = $('#badge');
+  b.style.display = unread > 0 && !chatOpen ? '' : 'none';
+  b.textContent = unread > 9 ? '9+' : unread;
+}
+
+// ---------- 投票キック ----------
+function openKickPick() {
+  if (!S) return;
+  if (S.kick) { showToast('すでにキック投票が行われています'); return; }
+  if (S.players.filter((p) => p.connected).length < 3) { showToast('キック投票は3人以上いるときに使えます'); return; }
+  const cands = S.players.filter((p) => p.connected && p.id !== S.me);
+  $('#kickList').innerHTML = cands.map((p) =>
+    `<button class="btn" data-act="kickpick" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('');
+  $('#kickPick').style.display = 'flex';
+}
+function closeKickPick() { $('#kickPick').style.display = 'none'; }
+
+function renderKick() {
+  const m = $('#kickModal'), box = $('#kickBox');
+  const k = S && S.kick;
+  if (!S || S.kick) closeKickPick();
+  if (!k) { m.style.display = 'none'; return; }
+  const head = `<p><b>${esc(k.byName)}</b> さんが <b>${esc(k.targetName)}</b> さんのキック投票を始めました</p>`;
+  const info = `<p class="kicknote">賛成 ${k.yes} / 必要 ${k.needed}(投票できる人 ${k.total}人) ・ 残り <span id="kickSec"></span>秒</p>`;
+  let body;
+  if (k.isTarget) body = `<p class="kicknote">あなたに対する投票です。結果をお待ちください。</p>`;
+  else if (!k.canVote) body = `<p class="kicknote">投票の結果をお待ちください。</p>`;
+  else if (k.myVote !== null) body = `<p>投票済み(${k.myVote ? 'キックする' : 'キックしない'})</p>`;
+  else body = `<button class="btn primary" data-act="kickyes">キックする</button><button class="btn" data-act="kickno">キックしない</button>`;
+  box.innerHTML = head + info + body;
+  m.style.display = 'flex';
+  tick();
+}
+
+// ---------- ランダムマッチ前のモラル説明(1日1回) ----------
+let pendingQuickName = null;
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+function requestQuick(name) {
+  let seen = null;
+  try { seen = localStorage.getItem('cc_manner_date'); } catch (e) {}
+  if (seen === todayStr()) { socket.emit('quick', { pid, name }); return; }
+  pendingQuickName = name;
+  $('#mannerModal').style.display = 'flex';
+}
+function mannerAnswer(agree) {
+  $('#mannerModal').style.display = 'none';
+  const name = pendingQuickName;
+  pendingQuickName = null;
+  if (!agree || !name) return;
+  try { localStorage.setItem('cc_manner_date', todayStr()); } catch (e) {}
+  socket.emit('quick', { pid, name });
+}
+
+// ---------- 操作 ----------
+function sendSettings() {
+  socket.emit('settings', {
+    rounds: Number($('#sRounds').value),
+    answerSec: Number($('#sAns').value),
+    voteSec: Number($('#sVote').value),
+  });
+}
+
+function submitAnswer() {
+  if (S && S.myAnswer != null) return;
+  if (answerMode === 'hand') {
+    const img = padToDataURL();
+    if (!img) { showToast('何か書いてください'); return; }
+    socket.emit('answer', { img });
+    return;
+  }
+  const a = $('#ans');
+  if (!a || a.disabled) return;
+  const text = a.value.trim();
+  if (!text) { showToast('回答を入力してください'); return; }
+  socket.emit('answer', { text });
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b || b.disabled) return;
+  const act = b.dataset.act;
+  if (act === 'quick') { const name = getName(); if (name) requestQuick(name); }
+  else if (act === 'mannerYes') mannerAnswer(true);
+  else if (act === 'mannerNo') mannerAnswer(false);
+  else if (act === 'create') { const name = getName(); if (name) socket.emit('create', { pid, name }); }
+  else if (act === 'join') {
+    const name = getName(); if (!name) return;
+    const code = ($('#code').value || '').trim().toUpperCase();
+    if (code.length !== 4) { showToast('4文字のコードを入力してください'); return; }
+    socket.emit('join', { pid, name, code });
+  }
+  else if (act === 'start') socket.emit('start');
+  else if (act === 'submit') submitAnswer();
+  else if (act === 'resumeYes') { hideResume(); socket.emit('resume', { pid }); }
+  else if (act === 'resumeNo') { hideResume(); socket.emit('abandon', { pid }); }
+  else if (act === 'call') { if (voiceWanted) stopVoice(); else startVoice(); }
+  else if (act === 'mic') toggleMute();
+  else if (act === 'chat') { if (chatOpen) closeChat(); else openChat(); }
+  else if (act === 'chatclose') closeChat();
+  else if (act === 'chatsend') sendChat();
+  else if (act === 'presnext') socket.emit('present:next');
+  else if (act === 'kick') openKickPick();
+  else if (act === 'kickcancel') closeKickPick();
+  else if (act === 'kickpick') { closeKickPick(); socket.emit('kick:start', { target: b.dataset.id }); }
+  else if (act === 'kickyes') socket.emit('kick:vote', { yes: true });
+  else if (act === 'kickno') socket.emit('kick:vote', { yes: false });
+  else if (act === 'mode') setMode(b.dataset.mode);
+  else if (act === 'undo') padUndo();
+  else if (act === 'clear') padClear();
+  else if (act === 'vote') socket.emit('vote', { idx: Number(b.dataset.idx) });
+  else if (act === 'next') socket.emit('next');
+  else if (act === 'again') socket.emit('again');
+  else if (act === 'leave') socket.emit('leave');
+  else if (act === 'share') {
+    const url = location.origin + '/?room=' + S.code;
+    if (navigator.share) navigator.share({ title: '厨二王選手権', text: `ルームコード: ${S.code}`, url }).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => showToast('招待リンクをコピーしました'));
+    else showToast(url);
+  }
+});
+
+render();
+</script>
+</body>
+</html>

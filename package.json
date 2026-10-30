@@ -1,0 +1,20 @@
+{
+  "name": "chuunibyou-ou-championship",
+  "version": "0.1.0",
+  "description": "厨二王選手権 - 漢字お題に横文字を考えて投票で競うオンラインパーティゲーム",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.7.5"
+  }
+}
