@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: last-unit
+    runtime: node
+    plan: free
+    buildCommand: echo ok
+    startCommand: node server.js
+    envVars:
+      - key: AUTHOR_KEY          # 作者専用URLの合言葉 (?author=この値)。自動生成されます
+        generateValue: true
+      - key: AUTHOR_PIN          # 作者モードの暗証番号
+        value: "6046"
+      - key: DISCORD_WEBHOOK_URL # 任意: 申請・設定変更の通知
+        sync: false
+      - key: GITHUB_TOKEN        # 任意(推奨): マップ設定・申請をGitHubに保存(再起動で消えない)
+        sync: false
+      - key: GITHUB_REPO         # 例: tr08-glitch/last-unit
+        sync: false
